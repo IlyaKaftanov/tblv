@@ -1,6 +1,7 @@
 mod app;
 mod cli;
 mod data;
+mod event;
 
 use clap::Parser;
 use cli::Cli;
