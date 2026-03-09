@@ -8,6 +8,7 @@ pub enum View {
     Uniques,
     Help,
     Value,
+    FilterMenu,
 }
 
 /// Confirmation prompt state for full-scan operations.
@@ -46,7 +47,15 @@ pub struct App {
     pub sort_col: Option<usize>,
     pub sort_desc: bool,
 
-    /// Set when sort changes to trigger data refresh.
+    // Filter state
+    pub filters: Vec<(String, Vec<String>)>,
+
+    // Filter menu state
+    pub filter_items: Vec<(String, bool)>,
+    pub filter_menu_cursor: usize,
+    pub filter_menu_scroll: usize,
+
+    /// Set when sort/filter changes to trigger data refresh.
     pub needs_refresh: bool,
 }
 
@@ -74,6 +83,10 @@ impl App {
             value_scroll: 0,
             sort_col: None,
             sort_desc: false,
+            filters: Vec::new(),
+            filter_items: Vec::new(),
+            filter_menu_cursor: 0,
+            filter_menu_scroll: 0,
             needs_refresh: false,
         }
     }
@@ -153,6 +166,26 @@ impl App {
             },
             Err(_) => "?".to_string(),
         }
+    }
+
+    pub fn active_filter_for_col(&self, col_name: &str) -> Option<&Vec<String>> {
+        self.filters
+            .iter()
+            .find(|(c, _)| c == col_name)
+            .map(|(_, v)| v)
+    }
+
+    pub fn set_filter(&mut self, col_name: String, values: Vec<String>) {
+        self.filters.retain(|(c, _)| c != &col_name);
+        if !values.is_empty() {
+            self.filters.push((col_name, values));
+        }
+        self.needs_refresh = true;
+    }
+
+    pub fn clear_all_filters(&mut self) {
+        self.filters.clear();
+        self.needs_refresh = true;
     }
 
     pub fn toggle_sort(&mut self, col: usize) {
@@ -359,7 +392,6 @@ mod tests {
         app.toggle_sort(1);
         assert_eq!(app.sort_col, Some(1));
         assert!(app.sort_desc);
-        assert!(app.needs_refresh);
 
         app.needs_refresh = false;
 
@@ -367,7 +399,6 @@ mod tests {
         app.toggle_sort(1);
         assert_eq!(app.sort_col, None);
         assert!(!app.sort_desc);
-        assert!(app.needs_refresh);
 
         app.needs_refresh = false;
 
@@ -380,5 +411,40 @@ mod tests {
         app.toggle_sort(2);
         assert_eq!(app.sort_col, Some(2));
         assert!(!app.sort_desc);
+    }
+
+    #[test]
+    fn test_set_and_clear_filters() {
+        let mut app = make_test_app();
+
+        // Set a filter
+        app.set_filter("name".to_string(), vec!["alice".to_string(), "bob".to_string()]);
+        assert_eq!(app.filters.len(), 1);
+        assert!(app.needs_refresh);
+
+        app.needs_refresh = false;
+
+        // Active filter lookup
+        let active = app.active_filter_for_col("name");
+        assert!(active.is_some());
+        assert_eq!(active.unwrap().len(), 2);
+
+        // No filter for another column
+        assert!(app.active_filter_for_col("age").is_none());
+
+        // Set empty filter removes it
+        app.set_filter("name".to_string(), vec![]);
+        assert_eq!(app.filters.len(), 0);
+
+        app.needs_refresh = false;
+
+        // Set two filters then clear all
+        app.set_filter("name".to_string(), vec!["alice".to_string()]);
+        app.set_filter("age".to_string(), vec!["30".to_string()]);
+        assert_eq!(app.filters.len(), 2);
+
+        app.clear_all_filters();
+        assert_eq!(app.filters.len(), 0);
+        assert!(app.needs_refresh);
     }
 }

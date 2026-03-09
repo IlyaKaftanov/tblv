@@ -167,6 +167,28 @@ impl DataSource {
         Ok(df)
     }
 
+    pub fn unique_values(&self, col_name: &str, max_n: usize) -> color_eyre::Result<Vec<String>> {
+        let vc = self
+            .lazy
+            .clone()
+            .group_by([col(col_name).cast(DataType::String)])
+            .agg([col(col_name).count().alias("count")])
+            .sort(
+                ["count"],
+                SortMultipleOptions::default().with_order_descending(true),
+            )
+            .limit(max_n as u32)
+            .collect()?;
+
+        let values: Vec<String> = vc
+            .column(col_name)?
+            .as_materialized_series()
+            .iter()
+            .map(|v| v.str_value().into_owned())
+            .collect();
+        Ok(values)
+    }
+
     pub fn value_counts(&self, col_name: &str, top_n: usize) -> color_eyre::Result<DataFrame> {
         let vc = self
             .lazy
@@ -250,5 +272,53 @@ mod tests {
         let ds = DataSource::open(f.path(), 1000).unwrap();
         let vc = ds.value_counts("name", 100).unwrap();
         assert_eq!(vc.height(), 3); // 3 unique names
+    }
+
+    #[test]
+    fn test_query_sort_ascending() {
+        let f = create_test_csv();
+        let ds = DataSource::open(f.path(), 1000).unwrap();
+        let df = ds.query(&[], Some("age"), false).unwrap();
+        // Should be sorted by age ascending: 25, 30, 35
+        let ages: Vec<i64> = df
+            .column("age")
+            .unwrap()
+            .i64()
+            .unwrap()
+            .into_no_null_iter()
+            .collect();
+        assert_eq!(ages, vec![25, 30, 35]);
+    }
+
+    #[test]
+    fn test_query_sort_descending() {
+        let f = create_test_csv();
+        let ds = DataSource::open(f.path(), 1000).unwrap();
+        let df = ds.query(&[], Some("age"), true).unwrap();
+        let ages: Vec<i64> = df
+            .column("age")
+            .unwrap()
+            .i64()
+            .unwrap()
+            .into_no_null_iter()
+            .collect();
+        assert_eq!(ages, vec![35, 30, 25]);
+    }
+
+    #[test]
+    fn test_query_with_filter() {
+        let f = create_test_csv();
+        let ds = DataSource::open(f.path(), 1000).unwrap();
+        let filters = vec![("name".to_string(), vec!["alice".to_string(), "bob".to_string()])];
+        let df = ds.query(&filters, None, false).unwrap();
+        assert_eq!(df.height(), 2);
+    }
+
+    #[test]
+    fn test_unique_values() {
+        let f = create_test_csv();
+        let ds = DataSource::open(f.path(), 1000).unwrap();
+        let values = ds.unique_values("name", 100).unwrap();
+        assert_eq!(values.len(), 3);
     }
 }

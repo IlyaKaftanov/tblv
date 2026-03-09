@@ -41,7 +41,7 @@ pub fn render(frame: &mut Frame, app: &mut App) {
     // Adjust scroll after updating visible dimensions.
     app.adjust_scroll();
 
-    // Build header row: column name + dtype on two lines, with sort indicators.
+    // Build header row: column name + dtype on two lines, with sort/filter indicators.
     let header_cells: Vec<Line> = (0..app.visible_cols)
         .map(|i| {
             let ci = app.col_offset + i;
@@ -55,7 +55,13 @@ pub fn render(frame: &mut Frame, app: &mut App) {
                 _ => "",
             };
 
-            Line::from(format!("{}{}\n{}", name, sort_indicator, dtype))
+            let filter_indicator = if app.active_filter_for_col(name).is_some() {
+                " [F]"
+            } else {
+                ""
+            };
+
+            Line::from(format!("{}{}{}\n{}", name, sort_indicator, filter_indicator, dtype))
         })
         .collect();
 
@@ -98,6 +104,11 @@ pub fn render(frame: &mut Frame, app: &mut App) {
         Some(total) => format!(" (of {} total)", total),
         None => String::new(),
     };
+    let filter_label = if app.filters.is_empty() {
+        String::new()
+    } else {
+        format!(" | {} filter(s) active", app.filters.len())
+    };
     let sort_label = match app.sort_col {
         Some(sc) => {
             let dir = if app.sort_desc { "desc" } else { "asc" };
@@ -106,7 +117,7 @@ pub fn render(frame: &mut Frame, app: &mut App) {
         None => String::new(),
     };
     let title = format!(
-        " tblv — {} rows{} × {} cols | row {}/{} col {}/{} «{}»{} ",
+        " tblv — {} rows{} × {} cols | row {}/{} col {}/{} «{}»{}{} ",
         app.total_rows(),
         total_label,
         app.total_cols(),
@@ -116,6 +127,7 @@ pub fn render(frame: &mut Frame, app: &mut App) {
         app.total_cols(),
         app.current_column_name(),
         sort_label,
+        filter_label,
     );
 
     let constraints: Vec<Constraint> = widths.iter().map(|&w| Constraint::Length(w)).collect();

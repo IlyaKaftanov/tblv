@@ -9,7 +9,7 @@ use cli::Cli;
 use crossterm::event as ct_event;
 use data::DataSource;
 
-use crate::app::App;
+use crate::app::{App, View};
 
 fn main() -> color_eyre::Result<()> {
     color_eyre::install()?;
@@ -39,22 +39,42 @@ fn run_app(
     loop {
         // Compute stats if loading (blocking for MVP).
         if app.loading {
-            let result = match app.view {
-                app::View::Describe => ds.describe_column(&app.stats_column),
-                app::View::Uniques => ds.value_counts(&app.stats_column, 100),
-                _ => unreachable!(),
-            };
-            match result {
-                Ok(df) => app.stats_result = Some(df),
-                Err(_) => app.view = app::View::Table,
+            match app.view {
+                View::Describe => match ds.describe_column(&app.stats_column) {
+                    Ok(df) => app.stats_result = Some(df),
+                    Err(_) => app.view = View::Table,
+                },
+                View::Uniques => match ds.value_counts(&app.stats_column, 100) {
+                    Ok(df) => app.stats_result = Some(df),
+                    Err(_) => app.view = View::Table,
+                },
+                View::FilterMenu => match ds.unique_values(&app.stats_column, 200) {
+                    Ok(values) => {
+                        let active = app
+                            .active_filter_for_col(&app.stats_column)
+                            .cloned()
+                            .unwrap_or_default();
+                        app.filter_items = values
+                            .into_iter()
+                            .map(|v| {
+                                let selected = !active.is_empty() && active.contains(&v);
+                                (v, selected)
+                            })
+                            .collect();
+                    }
+                    Err(_) => {
+                        app.view = View::Table;
+                    }
+                },
+                _ => {}
             }
             app.loading = false;
         }
 
-        // Refresh data when sort state changes.
+        // Refresh data when sort/filter state changes.
         if app.needs_refresh {
             let sort_col_name = app.sort_col.map(|i| app.columns[i].as_str());
-            if let Ok(df) = ds.query(&[], sort_col_name, app.sort_desc) {
+            if let Ok(df) = ds.query(&app.filters, sort_col_name, app.sort_desc) {
                 app.data = df;
             }
             app.needs_refresh = false;

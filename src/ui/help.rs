@@ -42,10 +42,40 @@ pub fn render(frame: &mut Frame, _app: &mut App) {
             Span::styled("View full cell value", desc_style),
         ]),
         Line::from(""),
-        Line::from(Span::styled("Sort", section_style)),
+        Line::from(Span::styled("Sort & Filter", section_style)),
         Line::from(vec![
             Span::styled("  s               ", key_style),
             Span::styled("Sort column (None \u{2192} Asc \u{2192} Desc)", desc_style),
+        ]),
+        Line::from(vec![
+            Span::styled("  f               ", key_style),
+            Span::styled("Filter column (pick values)", desc_style),
+        ]),
+        Line::from(vec![
+            Span::styled("  c               ", key_style),
+            Span::styled("Clear all filters", desc_style),
+        ]),
+        Line::from(""),
+        Line::from(Span::styled("Filter Menu", section_style)),
+        Line::from(vec![
+            Span::styled("  Space           ", key_style),
+            Span::styled("Toggle value selection", desc_style),
+        ]),
+        Line::from(vec![
+            Span::styled("  a               ", key_style),
+            Span::styled("Select all values", desc_style),
+        ]),
+        Line::from(vec![
+            Span::styled("  n               ", key_style),
+            Span::styled("Select none", desc_style),
+        ]),
+        Line::from(vec![
+            Span::styled("  Enter           ", key_style),
+            Span::styled("Apply filter", desc_style),
+        ]),
+        Line::from(vec![
+            Span::styled("  Esc             ", key_style),
+            Span::styled("Cancel filter", desc_style),
         ]),
         Line::from(""),
         Line::from(Span::styled("Stats", section_style)),
