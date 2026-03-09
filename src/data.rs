@@ -54,6 +54,93 @@ impl DataSource {
             .map(|(_name, dtype)| format!("{}", dtype))
             .collect())
     }
+
+    pub fn describe_column(&self, col_name: &str) -> color_eyre::Result<DataFrame> {
+        let c = col(col_name);
+        let stats = self
+            .lazy
+            .clone()
+            .select([
+                lit("count").alias("statistic"),
+                c.clone().count().cast(DataType::String).alias(col_name),
+            ])
+            .collect()?;
+
+        let null_count = self
+            .lazy
+            .clone()
+            .select([
+                lit("null_count").alias("statistic"),
+                c.clone().null_count().cast(DataType::String).alias(col_name),
+            ])
+            .collect()?;
+
+        let mean = self
+            .lazy
+            .clone()
+            .select([
+                lit("mean").alias("statistic"),
+                c.clone().mean().cast(DataType::String).alias(col_name),
+            ])
+            .collect()?;
+
+        let std = self
+            .lazy
+            .clone()
+            .select([
+                lit("std").alias("statistic"),
+                c.clone().std(1).cast(DataType::String).alias(col_name),
+            ])
+            .collect()?;
+
+        let min = self
+            .lazy
+            .clone()
+            .select([
+                lit("min").alias("statistic"),
+                c.clone().min().cast(DataType::String).alias(col_name),
+            ])
+            .collect()?;
+
+        let max = self
+            .lazy
+            .clone()
+            .select([
+                lit("max").alias("statistic"),
+                c.clone().max().cast(DataType::String).alias(col_name),
+            ])
+            .collect()?;
+
+        let median = self
+            .lazy
+            .clone()
+            .select([
+                lit("median").alias("statistic"),
+                c.clone().median().cast(DataType::String).alias(col_name),
+            ])
+            .collect()?;
+
+        let mut desc = stats;
+        for part in [null_count, mean, std, min, max, median] {
+            desc = desc.vstack(&part)?;
+        }
+        Ok(desc)
+    }
+
+    pub fn value_counts(&self, col_name: &str, top_n: usize) -> color_eyre::Result<DataFrame> {
+        let vc = self
+            .lazy
+            .clone()
+            .group_by([col(col_name)])
+            .agg([col(col_name).count().alias("count")])
+            .sort(
+                ["count"],
+                SortMultipleOptions::default().with_order_descending(true),
+            )
+            .limit(top_n as u32)
+            .collect()?;
+        Ok(vc)
+    }
 }
 
 #[cfg(test)]
@@ -100,5 +187,24 @@ mod tests {
         let f = NamedTempFile::with_suffix(".json").unwrap();
         let result = DataSource::open(f.path(), 10);
         assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_describe_column() {
+        let f = create_test_csv();
+        let ds = DataSource::open(f.path(), 1000).unwrap();
+        let desc = ds.describe_column("age").unwrap();
+        assert!(desc.height() > 0);
+        // Should have a "statistic" column and the data column
+        let col_names: Vec<String> = desc.get_column_names().iter().map(|s| s.to_string()).collect();
+        assert!(col_names.contains(&"statistic".to_string()));
+    }
+
+    #[test]
+    fn test_value_counts() {
+        let f = create_test_csv();
+        let ds = DataSource::open(f.path(), 1000).unwrap();
+        let vc = ds.value_counts("name", 100).unwrap();
+        assert_eq!(vc.height(), 3); // 3 unique names
     }
 }
