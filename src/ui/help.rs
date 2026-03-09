@@ -37,6 +37,16 @@ pub fn render(frame: &mut Frame, _app: &mut App) {
             Span::styled("  Ctrl-h/Ctrl-l   ", key_style),
             Span::styled("Jump to first/last column", desc_style),
         ]),
+        Line::from(vec![
+            Span::styled("  Enter           ", key_style),
+            Span::styled("View full cell value", desc_style),
+        ]),
+        Line::from(""),
+        Line::from(Span::styled("Sort", section_style)),
+        Line::from(vec![
+            Span::styled("  s               ", key_style),
+            Span::styled("Sort column (None \u{2192} Asc \u{2192} Desc)", desc_style),
+        ]),
         Line::from(""),
         Line::from(Span::styled("Stats", section_style)),
         Line::from(vec![

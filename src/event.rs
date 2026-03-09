@@ -28,6 +28,7 @@ pub fn handle_event(app: &mut App, event: Event) {
             View::Table => handle_table(app, &key),
             View::Describe | View::Uniques => handle_stats(app, &key),
             View::Help => handle_help(app, &key),
+            View::Value => handle_value(app, &key),
         },
     }
 }
@@ -91,6 +92,18 @@ fn handle_table(app: &mut App, key: &KeyEvent) {
             app.prompt = PromptState::ConfirmUniques;
         }
 
+        // Enter — value view (show full cell value)
+        KeyCode::Enter => {
+            app.cell_value = app.current_cell_value();
+            app.value_scroll = 0;
+            app.view = View::Value;
+        }
+
+        // s — sort current column
+        KeyCode::Char('s') => {
+            app.toggle_sort(app.cursor_col);
+        }
+
         // ? — help view
         KeyCode::Char('?') => {
             app.view = View::Help;
@@ -111,6 +124,23 @@ fn handle_stats(app: &mut App, key: &KeyEvent) {
         KeyCode::Esc | KeyCode::Char('q') => {
             app.view = View::Table;
             app.stats_result = None;
+        }
+        _ => {}
+    }
+}
+
+/// Handle keys in the Value view.
+fn handle_value(app: &mut App, key: &KeyEvent) {
+    match key.code {
+        KeyCode::Esc | KeyCode::Char('q') | KeyCode::Enter => {
+            app.view = View::Table;
+            app.value_scroll = 0;
+        }
+        KeyCode::Char('j') | KeyCode::Down => {
+            app.value_scroll = app.value_scroll.saturating_add(1);
+        }
+        KeyCode::Char('k') | KeyCode::Up => {
+            app.value_scroll = app.value_scroll.saturating_sub(1);
         }
         _ => {}
     }
@@ -350,5 +380,18 @@ mod tests {
         });
         handle_event(&mut app, release);
         assert!(!app.should_quit);
+    }
+
+    // --- Sort ---
+
+    #[test]
+    fn test_sort_keybinding() {
+        let mut app = make_test_app();
+        app.cursor_col = 1; // "age"
+
+        handle_event(&mut app, press(KeyCode::Char('s')));
+        assert_eq!(app.sort_col, Some(1));
+        assert!(!app.sort_desc);
+        assert!(app.needs_refresh);
     }
 }

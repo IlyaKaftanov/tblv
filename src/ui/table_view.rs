@@ -41,13 +41,21 @@ pub fn render(frame: &mut Frame, app: &mut App) {
     // Adjust scroll after updating visible dimensions.
     app.adjust_scroll();
 
-    // Build header row: column name + dtype on two lines.
+    // Build header row: column name + dtype on two lines, with sort indicators.
     let header_cells: Vec<Line> = (0..app.visible_cols)
         .map(|i| {
             let ci = app.col_offset + i;
             let name = &app.columns[ci];
             let dtype = &app.dtypes[ci];
-            Line::from(format!("{}\n{}", name, dtype))
+
+            let sort_indicator = match app.sort_col {
+                Some(sc) if sc == ci => {
+                    if app.sort_desc { " \u{25bc}" } else { " \u{25b2}" }
+                }
+                _ => "",
+            };
+
+            Line::from(format!("{}{}\n{}", name, sort_indicator, dtype))
         })
         .collect();
 
@@ -86,14 +94,28 @@ pub fn render(frame: &mut Frame, app: &mut App) {
         .collect();
 
     // Title bar.
+    let total_label = match app.total_file_rows {
+        Some(total) => format!(" (of {} total)", total),
+        None => String::new(),
+    };
+    let sort_label = match app.sort_col {
+        Some(sc) => {
+            let dir = if app.sort_desc { "desc" } else { "asc" };
+            format!(" | sort: {} {}", app.columns[sc], dir)
+        }
+        None => String::new(),
+    };
     let title = format!(
-        " tblv — {} rows × {} cols | row {}/{} col {}/{} ",
+        " tblv — {} rows{} × {} cols | row {}/{} col {}/{} «{}»{} ",
         app.total_rows(),
+        total_label,
         app.total_cols(),
         app.cursor_row + 1,
         app.total_rows(),
         app.cursor_col + 1,
         app.total_cols(),
+        app.current_column_name(),
+        sort_label,
     );
 
     let constraints: Vec<Constraint> = widths.iter().map(|&w| Constraint::Length(w)).collect();
@@ -101,19 +123,32 @@ pub fn render(frame: &mut Frame, app: &mut App) {
     let table = Table::new(rows, &constraints)
         .header(header)
         .block(Block::bordered().title(title))
-        .row_highlight_style(
+        // Subtle row highlight — just underline, no background
+        .row_highlight_style(Style::default().add_modifier(Modifier::UNDERLINED))
+        // No column highlight — let cell highlight do the work
+        .column_highlight_style(Style::default())
+        // Active cell: bright and reversed so it pops
+        .cell_highlight_style(
             Style::default()
-                .bg(Color::DarkGray)
+                .bg(Color::Cyan)
+                .fg(Color::Black)
                 .add_modifier(Modifier::BOLD),
         );
 
-    // TableState tracks which row is highlighted.
-    let selected = if app.cursor_row >= app.row_offset {
+    // TableState tracks both row and column selection.
+    let selected_row = if app.cursor_row >= app.row_offset {
         Some(app.cursor_row - app.row_offset)
     } else {
         Some(0)
     };
-    let mut state = TableState::default().with_selected(selected);
+    let selected_col = if app.cursor_col >= app.col_offset {
+        Some(app.cursor_col - app.col_offset)
+    } else {
+        Some(0)
+    };
+    let mut state = TableState::default()
+        .with_selected(selected_row)
+        .with_selected_column(selected_col);
 
     frame.render_stateful_widget(table, area, &mut state);
 }
