@@ -35,6 +35,17 @@ impl DataSource {
         Ok(Self { lazy, head_n })
     }
 
+    /// Count total rows in the file (full scan for CSV, metadata for Parquet).
+    pub fn total_row_count(&self) -> color_eyre::Result<usize> {
+        let count_df = self
+            .lazy
+            .clone()
+            .select([len().alias("count")])
+            .collect()?;
+        let count = count_df.column("count")?.u32()?.get(0).unwrap_or(0) as usize;
+        Ok(count)
+    }
+
     pub fn head(&self) -> color_eyre::Result<DataFrame> {
         let df = self.lazy.clone().limit(self.head_n).collect()?;
         Ok(df)
@@ -126,6 +137,34 @@ impl DataSource {
             desc = desc.vstack(&part)?;
         }
         Ok(desc)
+    }
+
+    pub fn query(
+        &self,
+        filters: &[(String, Vec<String>)],
+        sort_col: Option<&str>,
+        sort_desc: bool,
+    ) -> color_eyre::Result<DataFrame> {
+        let mut lf = self.lazy.clone();
+
+        // Apply filters: for each (col, values), filter where col is in values.
+        for (col_name, values) in filters {
+            if !values.is_empty() {
+                let lit_series = Series::new(col_name.into(), values);
+                lf = lf.filter(col(col_name).cast(DataType::String).is_in(lit(lit_series)));
+            }
+        }
+
+        // Apply sort if specified.
+        if let Some(sort_col_name) = sort_col {
+            lf = lf.sort(
+                [sort_col_name],
+                SortMultipleOptions::default().with_order_descending(sort_desc),
+            );
+        }
+
+        let df = lf.limit(self.head_n).collect()?;
+        Ok(df)
     }
 
     pub fn value_counts(&self, col_name: &str, top_n: usize) -> color_eyre::Result<DataFrame> {

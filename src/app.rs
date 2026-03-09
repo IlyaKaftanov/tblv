@@ -7,6 +7,7 @@ pub enum View {
     Describe,
     Uniques,
     Help,
+    Value,
 }
 
 /// Confirmation prompt state for full-scan operations.
@@ -34,6 +35,19 @@ pub struct App {
     pub stats_result: Option<DataFrame>,
     pub loading: bool,
     pub stats_column: String,
+    /// Total rows in the file (may differ from loaded head).
+    pub total_file_rows: Option<usize>,
+    /// Cached current cell value for value view.
+    pub cell_value: String,
+    /// Scroll offset for value view popup.
+    pub value_scroll: u16,
+
+    // Sort state
+    pub sort_col: Option<usize>,
+    pub sort_desc: bool,
+
+    /// Set when sort changes to trigger data refresh.
+    pub needs_refresh: bool,
 }
 
 impl App {
@@ -55,6 +69,12 @@ impl App {
             stats_result: None,
             loading: false,
             stats_column: String::new(),
+            total_file_rows: None,
+            cell_value: String::new(),
+            value_scroll: 0,
+            sort_col: None,
+            sort_desc: false,
+            needs_refresh: false,
         }
     }
 
@@ -121,6 +141,39 @@ impl App {
     /// Get the name of the column under the cursor.
     pub fn current_column_name(&self) -> &str {
         &self.columns[self.cursor_col]
+    }
+
+    /// Get the formatted value of the cell under the cursor.
+    pub fn current_cell_value(&self) -> String {
+        let col_name = self.current_column_name();
+        match self.data.column(col_name) {
+            Ok(series) => match series.get(self.cursor_row) {
+                Ok(v) => format!("{}", v),
+                Err(_) => "ERR".to_string(),
+            },
+            Err(_) => "?".to_string(),
+        }
+    }
+
+    pub fn toggle_sort(&mut self, col: usize) {
+        match self.sort_col {
+            Some(c) if c == col => {
+                if self.sort_desc {
+                    // Was descending, clear sort
+                    self.sort_col = None;
+                    self.sort_desc = false;
+                } else {
+                    // Was ascending, switch to descending
+                    self.sort_desc = true;
+                }
+            }
+            _ => {
+                // New column or no sort: set ascending
+                self.sort_col = Some(col);
+                self.sort_desc = false;
+            }
+        }
+        self.needs_refresh = true;
     }
 
     /// Ensure the cursor is visible within the scroll window.
@@ -284,5 +337,48 @@ mod tests {
         app.cursor_col = 0;
         app.adjust_scroll();
         assert_eq!(app.col_offset, 0);
+    }
+
+    #[test]
+    fn test_toggle_sort_cycle() {
+        let mut app = make_test_app();
+
+        // No sort initially
+        assert_eq!(app.sort_col, None);
+        assert!(!app.sort_desc);
+
+        // First toggle: ascending on col 1
+        app.toggle_sort(1);
+        assert_eq!(app.sort_col, Some(1));
+        assert!(!app.sort_desc);
+        assert!(app.needs_refresh);
+
+        app.needs_refresh = false;
+
+        // Second toggle on same col: descending
+        app.toggle_sort(1);
+        assert_eq!(app.sort_col, Some(1));
+        assert!(app.sort_desc);
+        assert!(app.needs_refresh);
+
+        app.needs_refresh = false;
+
+        // Third toggle on same col: clear sort
+        app.toggle_sort(1);
+        assert_eq!(app.sort_col, None);
+        assert!(!app.sort_desc);
+        assert!(app.needs_refresh);
+
+        app.needs_refresh = false;
+
+        // Toggle on different col: ascending
+        app.toggle_sort(0);
+        assert_eq!(app.sort_col, Some(0));
+        assert!(!app.sort_desc);
+
+        // Toggle on yet another col: replaces
+        app.toggle_sort(2);
+        assert_eq!(app.sort_col, Some(2));
+        assert!(!app.sort_desc);
     }
 }
