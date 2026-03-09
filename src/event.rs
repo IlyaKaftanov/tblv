@@ -29,6 +29,7 @@ pub fn handle_event(app: &mut App, event: Event) {
             View::Describe | View::Uniques => handle_stats(app, &key),
             View::Help => handle_help(app, &key),
             View::Value => handle_value(app, &key),
+            View::FilterMenu => handle_filter_menu(app, &key),
         },
     }
 }
@@ -104,6 +105,18 @@ fn handle_table(app: &mut App, key: &KeyEvent) {
             app.toggle_sort(app.cursor_col);
         }
 
+        // f — filter current column
+        KeyCode::Char('f') => {
+            app.stats_column = app.current_column_name().to_string();
+            app.loading = true;
+            app.view = View::FilterMenu;
+        }
+
+        // c — clear all filters
+        KeyCode::Char('c') => {
+            app.clear_all_filters();
+        }
+
         // ? — help view
         KeyCode::Char('?') => {
             app.view = View::Help;
@@ -151,6 +164,60 @@ fn handle_help(app: &mut App, key: &KeyEvent) {
     match key.code {
         KeyCode::Esc | KeyCode::Char('q') | KeyCode::Char('?') => {
             app.view = View::Table;
+        }
+        _ => {}
+    }
+}
+
+/// Handle keys in the Filter Menu view.
+fn handle_filter_menu(app: &mut App, key: &KeyEvent) {
+    match key.code {
+        KeyCode::Char('j') | KeyCode::Down => {
+            if app.filter_menu_cursor < app.filter_items.len().saturating_sub(1) {
+                app.filter_menu_cursor += 1;
+            }
+        }
+        KeyCode::Char('k') | KeyCode::Up => {
+            app.filter_menu_cursor = app.filter_menu_cursor.saturating_sub(1);
+        }
+        KeyCode::Char(' ') => {
+            // Toggle selection
+            if let Some(item) = app.filter_items.get_mut(app.filter_menu_cursor) {
+                item.1 = !item.1;
+            }
+        }
+        KeyCode::Enter => {
+            // Apply filter
+            let selected: Vec<String> = app
+                .filter_items
+                .iter()
+                .filter(|(_, sel)| *sel)
+                .map(|(val, _)| val.clone())
+                .collect();
+            app.set_filter(app.stats_column.clone(), selected);
+            app.view = View::Table;
+            app.filter_items.clear();
+            app.filter_menu_cursor = 0;
+            app.filter_menu_scroll = 0;
+        }
+        KeyCode::Esc => {
+            // Cancel
+            app.view = View::Table;
+            app.filter_items.clear();
+            app.filter_menu_cursor = 0;
+            app.filter_menu_scroll = 0;
+        }
+        KeyCode::Char('a') => {
+            // Select all
+            for item in &mut app.filter_items {
+                item.1 = true;
+            }
+        }
+        KeyCode::Char('n') => {
+            // Select none
+            for item in &mut app.filter_items {
+                item.1 = false;
+            }
         }
         _ => {}
     }
@@ -393,5 +460,110 @@ mod tests {
         assert_eq!(app.sort_col, Some(1));
         assert!(!app.sort_desc);
         assert!(app.needs_refresh);
+    }
+
+    // --- Filter ---
+
+    #[test]
+    fn test_filter_keybinding_opens_menu() {
+        let mut app = make_test_app();
+        app.cursor_col = 0; // "name"
+
+        handle_event(&mut app, press(KeyCode::Char('f')));
+        assert_eq!(app.view, View::FilterMenu);
+        assert!(app.loading);
+        assert_eq!(app.stats_column, "name");
+    }
+
+    #[test]
+    fn test_clear_filters_keybinding() {
+        let mut app = make_test_app();
+        app.set_filter("name".to_string(), vec!["alice".to_string()]);
+        app.needs_refresh = false;
+
+        handle_event(&mut app, press(KeyCode::Char('c')));
+        assert!(app.filters.is_empty());
+        assert!(app.needs_refresh);
+    }
+
+    // --- Filter menu ---
+
+    #[test]
+    fn test_filter_menu_navigation() {
+        let mut app = make_test_app();
+        app.view = View::FilterMenu;
+        app.filter_items = vec![
+            ("alice".to_string(), false),
+            ("bob".to_string(), false),
+            ("carol".to_string(), false),
+        ];
+
+        // Move down
+        handle_event(&mut app, press(KeyCode::Char('j')));
+        assert_eq!(app.filter_menu_cursor, 1);
+
+        // Move down again
+        handle_event(&mut app, press(KeyCode::Char('j')));
+        assert_eq!(app.filter_menu_cursor, 2);
+
+        // Move up
+        handle_event(&mut app, press(KeyCode::Char('k')));
+        assert_eq!(app.filter_menu_cursor, 1);
+    }
+
+    #[test]
+    fn test_filter_menu_toggle_and_apply() {
+        let mut app = make_test_app();
+        app.view = View::FilterMenu;
+        app.stats_column = "name".to_string();
+        app.filter_items = vec![
+            ("alice".to_string(), false),
+            ("bob".to_string(), false),
+        ];
+
+        // Toggle first item
+        handle_event(&mut app, press(KeyCode::Char(' ')));
+        assert!(app.filter_items[0].1);
+        assert!(!app.filter_items[1].1);
+
+        // Apply
+        handle_event(&mut app, press(KeyCode::Enter));
+        assert_eq!(app.view, View::Table);
+        assert_eq!(app.filters.len(), 1);
+        assert_eq!(app.filters[0].1, vec!["alice".to_string()]);
+        assert!(app.filter_items.is_empty());
+    }
+
+    #[test]
+    fn test_filter_menu_select_all_none() {
+        let mut app = make_test_app();
+        app.view = View::FilterMenu;
+        app.filter_items = vec![
+            ("alice".to_string(), false),
+            ("bob".to_string(), false),
+        ];
+
+        // Select all
+        handle_event(&mut app, press(KeyCode::Char('a')));
+        assert!(app.filter_items[0].1);
+        assert!(app.filter_items[1].1);
+
+        // Select none
+        handle_event(&mut app, press(KeyCode::Char('n')));
+        assert!(!app.filter_items[0].1);
+        assert!(!app.filter_items[1].1);
+    }
+
+    #[test]
+    fn test_filter_menu_cancel() {
+        let mut app = make_test_app();
+        app.view = View::FilterMenu;
+        app.filter_items = vec![
+            ("alice".to_string(), true),
+        ];
+
+        handle_event(&mut app, press(KeyCode::Esc));
+        assert_eq!(app.view, View::Table);
+        assert!(app.filter_items.is_empty());
     }
 }

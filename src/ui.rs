@@ -1,3 +1,4 @@
+mod filter_menu;
 mod help;
 mod prompt;
 mod stats_view;
@@ -10,7 +11,7 @@ use ratatui::Frame;
 /// Main render function — dispatches to the appropriate view.
 pub fn render(frame: &mut Frame, app: &mut App) {
     match app.view {
-        View::Table | View::Value => table_view::render(frame, app),
+        View::Table | View::Value | View::FilterMenu => table_view::render(frame, app),
         View::Describe | View::Uniques => stats_view::render(frame, app),
         View::Help => help::render(frame, app),
     }
@@ -23,5 +24,10 @@ pub fn render(frame: &mut Frame, app: &mut App) {
     // Value view renders as overlay on top of table.
     if app.view == View::Value {
         value_view::render(frame, app);
+    }
+
+    // Filter menu renders as overlay on top of table.
+    if app.view == View::FilterMenu {
+        filter_menu::render(frame, app);
     }
 }
