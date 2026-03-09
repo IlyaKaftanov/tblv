@@ -1,10 +1,10 @@
-mod table_view;
-mod stats_view;
-mod prompt;
 mod help;
+mod prompt;
+mod stats_view;
+mod table_view;
 
-use ratatui::Frame;
 use crate::app::{App, PromptState, View};
+use ratatui::Frame;
 
 /// Main render function — dispatches to the appropriate view.
 pub fn render(frame: &mut Frame, app: &mut App) {

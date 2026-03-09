@@ -26,7 +26,7 @@ pub fn render(frame: &mut Frame, app: &mut App) {
 
     for ci in app.col_offset..col_end {
         let name_len = app.columns[ci].len() as u16;
-        let w = name_len.max(12).min(30);
+        let w = name_len.clamp(12, 30);
         // +1 for column gap
         let needed = w + 1;
         if used_width + needed > area.width && vis_cols > 0 {
@@ -52,7 +52,11 @@ pub fn render(frame: &mut Frame, app: &mut App) {
         .collect();
 
     let header = Row::new(header_cells)
-        .style(Style::default().fg(Color::Yellow).add_modifier(Modifier::BOLD))
+        .style(
+            Style::default()
+                .fg(Color::Yellow)
+                .add_modifier(Modifier::BOLD),
+        )
         .height(2);
 
     // Build data rows.
