@@ -153,11 +153,7 @@ mod tests {
             "score" => &[95.5, 87.3, 91.0, 78.2, 99.1],
         }
         .unwrap();
-        let columns = vec![
-            "name".to_string(),
-            "age".to_string(),
-            "score".to_string(),
-        ];
+        let columns = vec!["name".to_string(), "age".to_string(), "score".to_string()];
         let dtypes = vec![
             "String".to_string(),
             "Int32".to_string(),

@@ -1,5 +1,5 @@
-use std::path::Path;
 use polars::prelude::*;
+use std::path::Path;
 
 pub struct DataSource {
     lazy: LazyFrame,
@@ -23,9 +23,7 @@ impl DataSource {
                     .with_infer_schema_length(Some(1000))
                     .finish()?
             }
-            "parquet" | "pq" => {
-                LazyFrame::scan_parquet(path, Default::default())?
-            }
+            "parquet" | "pq" => LazyFrame::scan_parquet(path, Default::default())?,
             _ => {
                 return Err(color_eyre::eyre::eyre!(
                     "Unsupported file format: '{}'. Supported: csv, tsv, parquet",
@@ -71,7 +69,10 @@ impl DataSource {
             .clone()
             .select([
                 lit("null_count").alias("statistic"),
-                c.clone().null_count().cast(DataType::String).alias(col_name),
+                c.clone()
+                    .null_count()
+                    .cast(DataType::String)
+                    .alias(col_name),
             ])
             .collect()?;
 
@@ -196,7 +197,11 @@ mod tests {
         let desc = ds.describe_column("age").unwrap();
         assert!(desc.height() > 0);
         // Should have a "statistic" column and the data column
-        let col_names: Vec<String> = desc.get_column_names().iter().map(|s| s.to_string()).collect();
+        let col_names: Vec<String> = desc
+            .get_column_names()
+            .iter()
+            .map(|s| s.to_string())
+            .collect();
         assert!(col_names.contains(&"statistic".to_string()));
     }
 

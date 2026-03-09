@@ -56,8 +56,7 @@ fn run_app(
             break Ok(());
         }
 
-        let ev = ct_event::read()
-            .map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e))?;
+        let ev = ct_event::read().map_err(std::io::Error::other)?;
         event::handle_event(app, ev);
     }
 }
