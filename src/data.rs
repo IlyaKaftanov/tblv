@@ -37,11 +37,7 @@ impl DataSource {
 
     /// Count total rows in the file (full scan for CSV, metadata for Parquet).
     pub fn total_row_count(&self) -> color_eyre::Result<usize> {
-        let count_df = self
-            .lazy
-            .clone()
-            .select([len().alias("count")])
-            .collect()?;
+        let count_df = self.lazy.clone().select([len().alias("count")]).collect()?;
         let count = count_df.column("count")?.u32()?.get(0).unwrap_or(0) as usize;
         Ok(count)
     }
@@ -309,7 +305,10 @@ mod tests {
     fn test_query_with_filter() {
         let f = create_test_csv();
         let ds = DataSource::open(f.path(), 1000).unwrap();
-        let filters = vec![("name".to_string(), vec!["alice".to_string(), "bob".to_string()])];
+        let filters = vec![(
+            "name".to_string(),
+            vec!["alice".to_string(), "bob".to_string()],
+        )];
         let df = ds.query(&filters, None, false).unwrap();
         assert_eq!(df.height(), 2);
     }

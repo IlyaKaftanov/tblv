@@ -30,4 +30,11 @@ pub fn render(frame: &mut Frame, app: &mut App) {
     if app.view == View::FilterMenu {
         filter_menu::render(frame, app);
     }
+
+    // Map parse error renders as small overlay in value view.
+    if app.view == View::Value
+        && let Some(ref err) = app.map_error
+    {
+        value_view::render_error(frame, err);
+    }
 }

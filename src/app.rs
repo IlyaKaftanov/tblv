@@ -57,6 +57,9 @@ pub struct App {
 
     /// Set when sort/filter changes to trigger data refresh.
     pub needs_refresh: bool,
+
+    // Map error (shown as overlay in value view)
+    pub map_error: Option<String>,
 }
 
 impl App {
@@ -88,6 +91,7 @@ impl App {
             filter_menu_cursor: 0,
             filter_menu_scroll: 0,
             needs_refresh: false,
+            map_error: None,
         }
     }
 
@@ -418,7 +422,10 @@ mod tests {
         let mut app = make_test_app();
 
         // Set a filter
-        app.set_filter("name".to_string(), vec!["alice".to_string(), "bob".to_string()]);
+        app.set_filter(
+            "name".to_string(),
+            vec!["alice".to_string(), "bob".to_string()],
+        );
         assert_eq!(app.filters.len(), 1);
         assert!(app.needs_refresh);
 

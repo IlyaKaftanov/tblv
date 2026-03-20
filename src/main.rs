@@ -2,6 +2,7 @@ mod app;
 mod cli;
 mod data;
 mod event;
+mod geo;
 mod ui;
 
 use clap::Parser;

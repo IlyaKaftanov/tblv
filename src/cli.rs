@@ -9,6 +9,6 @@ pub struct Cli {
     pub file: PathBuf,
 
     /// Number of rows to display
-    #[arg(short = 'n', long = "head", default_value_t = 1000)]
+    #[arg(short = 'n', long = "head", default_value_t = 5000)]
     pub head: u32,
 }

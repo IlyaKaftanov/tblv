@@ -52,6 +52,27 @@ pub fn render(frame: &mut Frame, app: &App) {
     frame.render_widget(popup, area);
 }
 
+/// Render a small error popup overlay (e.g. for map parse errors).
+pub fn render_error(frame: &mut Frame, msg: &str) {
+    let text = format!(" {} — press any key ", msg);
+    let width = (text.len() as u16 + 2).min(frame.area().width);
+
+    let vertical = Layout::vertical([Constraint::Length(3)])
+        .flex(Flex::Center)
+        .split(frame.area());
+    let area = Layout::horizontal([Constraint::Length(width)])
+        .flex(Flex::Center)
+        .split(vertical[0])[0];
+
+    let para = Paragraph::new(text).block(
+        Block::bordered()
+            .title(" Error ")
+            .style(Style::default().fg(Color::Red)),
+    );
+    frame.render_widget(Clear, area);
+    frame.render_widget(para, area);
+}
+
 fn centered_rect(percent_x: u16, height: u16, area: Rect) -> Rect {
     let vertical = Layout::vertical([Constraint::Length(height)])
         .flex(Flex::Center)
