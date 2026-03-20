@@ -20,6 +20,12 @@ pub fn handle_event(app: &mut App, event: Event) {
         return;
     }
 
+    // Any key dismisses an active notification popup.
+    if app.notification.is_some() {
+        app.notification = None;
+        return;
+    }
+
     // Dispatch based on current prompt / view.
     match app.prompt {
         PromptState::ConfirmDescribe | PromptState::ConfirmUniques => {

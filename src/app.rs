@@ -60,6 +60,9 @@ pub struct App {
 
     // Map error (shown as overlay in value view)
     pub map_error: Option<String>,
+
+    /// One-time notification popup (e.g. skipped columns), dismissed by any key.
+    pub notification: Option<String>,
 }
 
 impl App {
@@ -92,6 +95,7 @@ impl App {
             filter_menu_scroll: 0,
             needs_refresh: false,
             map_error: None,
+            notification: None,
         }
     }
 

@@ -1,5 +1,6 @@
 mod filter_menu;
 mod help;
+mod notification;
 mod prompt;
 mod stats_view;
 mod table_view;
@@ -36,5 +37,10 @@ pub fn render(frame: &mut Frame, app: &mut App) {
         && let Some(ref err) = app.map_error
     {
         value_view::render_error(frame, err);
+    }
+
+    // Notification popup (e.g. skipped columns on open).
+    if app.notification.is_some() {
+        notification::render(frame, app);
     }
 }

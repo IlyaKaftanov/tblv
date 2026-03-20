@@ -1,6 +1,6 @@
 [package]
 name = "tblv"
-version = "0.1.0"
+version = "0.1.1"
 description = "Fast terminal viewer for CSV and Parquet files"
 authors = ["ilia.kaftanov <ilia.kaftanov.personal@gmail.com>"]
 license = "MIT"
@@ -14,7 +14,9 @@ color-eyre = "0.6.3"
 crossterm = "0.29.0"
 ratatui = "0.30.0"
 clap = { version = "4", features = ["derive"] }
-polars = { version = "0.46", features = ["lazy", "csv", "parquet", "describe", "timezones", "is_in"] }
+polars = { version = "0.46", features = ["lazy", "csv", "parquet", "describe", "timezones", "is_in", "ipc_streaming"] }
+arrow = { version = "53", default-features = false, features = ["ipc"] }
+parquet = "53"
 
 [dev-dependencies]
 tempfile = "3"

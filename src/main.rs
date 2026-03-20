@@ -24,6 +24,15 @@ fn main() -> color_eyre::Result<()> {
     let mut app = App::new(df, columns, dtypes);
     app.total_file_rows = ds.total_row_count().ok();
 
+    if !ds.skipped_columns.is_empty() {
+        let mut msg = String::from("Skipped columns (unsupported types):\n\n");
+        for sc in &ds.skipped_columns {
+            msg.push_str(&format!("  {} ({})\n", sc.name, sc.type_name));
+        }
+        msg.push_str("\nPress any key to continue");
+        app.notification = Some(msg);
+    }
+
     let mut terminal = ratatui::init();
     let result = run_app(&mut terminal, &mut app, &ds);
     ratatui::restore();

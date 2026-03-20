@@ -2,6 +2,8 @@
 
 Fast terminal viewer for CSV and Parquet files. Built with [Polars](https://pola.rs/) and [Ratatui](https://ratatui.rs/).
 
+![tblv example](assets/example.png)
+
 - Lazy loading — never reads the entire file into memory
 - Vim-style navigation
 - Sort and filter columns interactively
