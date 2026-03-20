@@ -17,12 +17,11 @@ pub fn render(frame: &mut Frame, app: &App) {
     let lines: Vec<Line> = message.lines().map(Line::from).collect();
     let height = (lines.len() + 2) as u16; // +2 for border
 
-    let popup = Paragraph::new(Text::from(lines))
-        .block(
-            Block::bordered()
-                .title(" Notice ")
-                .style(Style::default().fg(Color::Yellow)),
-        );
+    let popup = Paragraph::new(Text::from(lines)).block(
+        Block::bordered()
+            .title(" Notice ")
+            .style(Style::default().fg(Color::Yellow)),
+    );
 
     let area = centered_rect(60, height, frame.area());
     frame.render_widget(Clear, area);

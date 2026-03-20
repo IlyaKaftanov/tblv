@@ -302,8 +302,8 @@ fn read_parquet_safe_columns(
     head_n: u32,
 ) -> color_eyre::Result<DataFrame> {
     use arrow::ipc::writer::StreamWriter;
-    use parquet::arrow::arrow_reader::ParquetRecordBatchReaderBuilder;
     use parquet::arrow::ProjectionMask;
+    use parquet::arrow::arrow_reader::ParquetRecordBatchReaderBuilder;
 
     let file = std::fs::File::open(path)?;
     let builder = ParquetRecordBatchReaderBuilder::try_new(file)?;
