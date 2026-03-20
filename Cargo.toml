@@ -15,7 +15,7 @@ crossterm = "0.29.0"
 ratatui = "0.30.0"
 clap = { version = "4", features = ["derive"] }
 polars = { version = "0.46", features = ["lazy", "csv", "parquet", "describe", "timezones", "is_in", "ipc_streaming"] }
-arrow = { version = "53", default-features = false, features = ["ipc"] }
+arrow = { version = "54", default-features = false, features = ["ipc"] }
 parquet = "53"
 
 [dev-dependencies]
