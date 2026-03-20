@@ -1,6 +1,7 @@
 use crossterm::event::{Event, KeyCode, KeyEvent, KeyEventKind, KeyModifiers};
 
 use crate::app::{App, PromptState, View};
+use crate::geo;
 
 /// Map crossterm key events to app state mutations.
 pub fn handle_event(app: &mut App, event: Event) {
@@ -144,6 +145,12 @@ fn handle_stats(app: &mut App, key: &KeyEvent) {
 
 /// Handle keys in the Value view.
 fn handle_value(app: &mut App, key: &KeyEvent) {
+    // Any key clears a map error overlay
+    if app.map_error.is_some() {
+        app.map_error = None;
+        return;
+    }
+
     match key.code {
         KeyCode::Esc | KeyCode::Char('q') | KeyCode::Enter => {
             app.view = View::Table;
@@ -155,6 +162,16 @@ fn handle_value(app: &mut App, key: &KeyEvent) {
         KeyCode::Char('k') | KeyCode::Up => {
             app.value_scroll = app.value_scroll.saturating_sub(1);
         }
+        KeyCode::Char('m') => match geo::parse_geometry(&app.cell_value) {
+            Ok(geom) => {
+                if let Err(e) = geo::open_in_browser(&geom) {
+                    app.map_error = Some(e);
+                }
+            }
+            Err(e) => {
+                app.map_error = Some(e);
+            }
+        },
         _ => {}
     }
 }
@@ -516,10 +533,7 @@ mod tests {
         let mut app = make_test_app();
         app.view = View::FilterMenu;
         app.stats_column = "name".to_string();
-        app.filter_items = vec![
-            ("alice".to_string(), false),
-            ("bob".to_string(), false),
-        ];
+        app.filter_items = vec![("alice".to_string(), false), ("bob".to_string(), false)];
 
         // Toggle first item
         handle_event(&mut app, press(KeyCode::Char(' ')));
@@ -538,10 +552,7 @@ mod tests {
     fn test_filter_menu_select_all_none() {
         let mut app = make_test_app();
         app.view = View::FilterMenu;
-        app.filter_items = vec![
-            ("alice".to_string(), false),
-            ("bob".to_string(), false),
-        ];
+        app.filter_items = vec![("alice".to_string(), false), ("bob".to_string(), false)];
 
         // Select all
         handle_event(&mut app, press(KeyCode::Char('a')));
@@ -558,9 +569,7 @@ mod tests {
     fn test_filter_menu_cancel() {
         let mut app = make_test_app();
         app.view = View::FilterMenu;
-        app.filter_items = vec![
-            ("alice".to_string(), true),
-        ];
+        app.filter_items = vec![("alice".to_string(), true)];
 
         handle_event(&mut app, press(KeyCode::Esc));
         assert_eq!(app.view, View::Table);

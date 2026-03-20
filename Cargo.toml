@@ -1,10 +1,13 @@
 [package]
 name = "tblv"
 version = "0.1.0"
-description = "Table View"
-authors = ["ilya.kaftanov <ilya.kaftanov@indriver.com>"]
+description = "Fast terminal viewer for CSV and Parquet files"
+authors = ["ilia.kaftanov <ilia.kaftanov.personal@gmail.com>"]
 license = "MIT"
 edition = "2024"
+repository = "https://github.com/IlyaKaftanov/tblv"
+keywords = ["csv", "parquet", "tui", "terminal", "viewer"]
+categories = ["command-line-utilities", "visualization"]
 
 [dependencies]
 color-eyre = "0.6.3"

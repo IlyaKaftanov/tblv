@@ -2,8 +2,8 @@ use ratatui::{
     Frame,
     layout::Constraint,
     style::{Color, Modifier, Style},
-    text::Line,
-    widgets::{Block, Row, Table, TableState},
+    text::{Line, Span, Text},
+    widgets::{Block, Cell, Row, Table, TableState},
 };
 
 use crate::app::App;
@@ -41,16 +41,21 @@ pub fn render(frame: &mut Frame, app: &mut App) {
     // Adjust scroll after updating visible dimensions.
     app.adjust_scroll();
 
-    // Build header row: column name + dtype on two lines, with sort/filter indicators.
-    let header_cells: Vec<Line> = (0..app.visible_cols)
+    // Build header row: column name (line 1) + dtype (line 2), with sort/filter indicators.
+    let header_cells: Vec<Cell> = (0..app.visible_cols)
         .map(|i| {
             let ci = app.col_offset + i;
+            let w = widths[i] as usize;
             let name = &app.columns[ci];
             let dtype = &app.dtypes[ci];
 
             let sort_indicator = match app.sort_col {
                 Some(sc) if sc == ci => {
-                    if app.sort_desc { " \u{25bc}" } else { " \u{25b2}" }
+                    if app.sort_desc {
+                        " \u{25bc}"
+                    } else {
+                        " \u{25b2}"
+                    }
                 }
                 _ => "",
             };
@@ -61,17 +66,35 @@ pub fn render(frame: &mut Frame, app: &mut App) {
                 ""
             };
 
-            Line::from(format!("{}{}{}\n{}", name, sort_indicator, filter_indicator, dtype))
+            // Truncate column name with ellipsis if it exceeds available width.
+            let suffix = format!("{}{}", sort_indicator, filter_indicator);
+            let max_name_len = w.saturating_sub(suffix.len());
+            let display_name = if name.len() > max_name_len && max_name_len > 1 {
+                format!(
+                    "{}\u{2026}{}",
+                    &name[..max_name_len.saturating_sub(1)],
+                    suffix
+                )
+            } else {
+                format!("{}{}", name, suffix)
+            };
+
+            let name_line = Line::from(Span::styled(
+                display_name,
+                Style::default()
+                    .fg(Color::Yellow)
+                    .add_modifier(Modifier::BOLD),
+            ));
+            let dtype_line = Line::from(Span::styled(
+                dtype.to_string(),
+                Style::default().fg(Color::DarkGray),
+            ));
+
+            Cell::from(Text::from(vec![name_line, dtype_line]))
         })
         .collect();
 
-    let header = Row::new(header_cells)
-        .style(
-            Style::default()
-                .fg(Color::Yellow)
-                .add_modifier(Modifier::BOLD),
-        )
-        .height(2);
+    let header = Row::new(header_cells).height(2);
 
     // Build data rows.
     let row_start = app.row_offset;
@@ -137,8 +160,8 @@ pub fn render(frame: &mut Frame, app: &mut App) {
         .block(Block::bordered().title(title))
         // Subtle row highlight — just underline, no background
         .row_highlight_style(Style::default().add_modifier(Modifier::UNDERLINED))
-        // No column highlight — let cell highlight do the work
-        .column_highlight_style(Style::default())
+        // Subtle column highlight — dim so the active column stands out
+        .column_highlight_style(Style::default().add_modifier(Modifier::DIM))
         // Active cell: bright and reversed so it pops
         .cell_highlight_style(
             Style::default()
