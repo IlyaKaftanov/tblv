@@ -16,7 +16,7 @@ ratatui = "0.30.0"
 clap = { version = "4", features = ["derive"] }
 polars = { version = "0.46", features = ["lazy", "csv", "parquet", "describe", "timezones", "is_in", "ipc_streaming"] }
 arrow = { version = "53", default-features = false, features = ["ipc"] }
-parquet = "53"
+parquet = "54"
 
 [dev-dependencies]
 tempfile = "3"
