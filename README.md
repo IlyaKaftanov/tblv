@@ -9,7 +9,23 @@ Fast terminal viewer for CSV and Parquet files. Built with [Polars](https://pola
 
 ## Installation
 
+### Shell (macOS / Linux)
+
 ```bash
+curl --proto '=https' --tlsv1.2 -LsSf https://github.com/IlyaKaftanov/tblv/releases/latest/download/tblv-installer.sh | sh
+```
+
+### Cargo
+
+```bash
+cargo install tblv
+```
+
+### From source
+
+```bash
+git clone https://github.com/IlyaKaftanov/tblv.git
+cd tblv
 cargo install --path .
 ```
 
